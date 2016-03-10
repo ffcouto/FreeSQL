@@ -1,0 +1,71 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{48E47E0A-EFED-42D5-98F5-02BCCCCFE3DC}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>FreeSQL.MsSQL</RootNamespace>
+    <AssemblyName>FreeSQL.MsSQL</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="common\SqlSearchEngine.cs" />
+    <Compile Include="common\SqlSearchParam.cs" />
+    <Compile Include="FreeSQLMsSQL.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SqlField.cs" />
+    <Compile Include="SqlOperation.cs" />
+    <Compile Include="Sql\CustomSelectSqlOperation.cs" />
+    <Compile Include="Sql\DeleteSpecialSqlOperation.cs" />
+    <Compile Include="Sql\DeleteSqlOperation.cs" />
+    <Compile Include="Sql\InsertOneTableSqlOperation.cs" />
+    <Compile Include="Sql\InsertSqlOperation.cs" />
+    <Compile Include="Sql\SelectAllSqlOperation.cs" />
+    <Compile Include="Sql\SelectSpecialSqlOperation.cs" />
+    <Compile Include="Sql\SelectSqlOperation.cs" />
+    <Compile Include="Sql\SelectTopSqlOperation.cs" />
+    <Compile Include="Sql\SelectTopWhereSqlOperation.cs" />
+    <Compile Include="Sql\UpdateSpecialSqlOperation.cs" />
+    <Compile Include="Sql\UpdateSqlOperation.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FreeSQL\FreeSQL.csproj">
+      <Project>{bba1075f-9c2b-498b-9d56-11d744a03e88}</Project>
+      <Name>FreeSQL</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
