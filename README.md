@@ -1,7 +1,7 @@
 # FreeSQL
 Object-Relational Mapping for applications
 
-Introduction
+## Introduction
 
 The goal of this project is to allow the elimination of SQL commands in the development
 of applications that use database access.
@@ -15,7 +15,7 @@ With the intense use of abstraction it is possible to migrate from one database 
 to another only by modifying a few lines of code. In addition, it allows flexibility
 in the user's choice of which database system he wants to use.
 
-Versioning
+## Versioning
 
 The version information for any assembly in this project consists of the following
 four values:
