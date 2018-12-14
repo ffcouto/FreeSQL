@@ -17,20 +17,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
-using System.Data;
 
-namespace FreeSQL.Database
+namespace System.Windows.Forms
 {
-   public interface ITransaction
+   public interface InputBoxView
    {
-      bool KeepAlive { get; set; }
-      
-      void BeginTransaction();
-      void BeginTransaction(bool keepAlive);
-      void CommitTransaction();
-      void CommitTransaction(bool keepAlive);
-      void RollbackTransaction();
-      void RollbackTransaction(bool keepAlive);
-      IDbTransaction GetCurrentTransaction();
+      string Text { get; set; }
+
+      string Prompt { get; set; }
+
+      string InputResponse { get; set; }
+
+      string DefaultValue { get; set; }
+
+      event EventHandler InputOk;
    }
 }

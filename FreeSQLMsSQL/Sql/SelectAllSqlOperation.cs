@@ -1,20 +1,19 @@
 ﻿/*
 FreeSQL
-Copyright (C) 2016 Fabiano Couto
+Copyright (C) 2016-2019 Fabiano Couto
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -29,21 +28,21 @@ namespace FreeSQL.Database.MsSQL
 {
    internal class SelectAllSqlOperation<T> : SqlOperation
    {
-      // variáveis locais
-      private readonly string orderField;
+      // local variables
+      private readonly string wOrderField;
       private T[] retObjs = new T[] { };
 
       public SelectAllSqlOperation(string orderField, SqlConnection connection, SqlTransaction transaction)
          : base(connection, transaction)
       {
-         this.orderField = orderField;
+         wOrderField = orderField;
       }
 
       public override void Execute()
       {
          try
          {
-            var readCommand = GetSelectAllCommand(orderField);
+            var readCommand = GetSelectAllCommand(wOrderField);
             var rows = LoadDataFromCommand(readCommand);
             retObjs = GetEntities<T>(rows, GetFieldAttributes<T>());
          }
@@ -57,35 +56,39 @@ namespace FreeSQL.Database.MsSQL
 
       private SqlCommand GetSelectAllCommand(string sortField)
       {
-         // atributos personalizados com permissão para leitura (cRud - Read)
+         // custom attributes with read permission (cRud - Read)
          var tabAttr = GetTableAttributes<T>().Where(a => a.CRUD.HasFlag(CrudOptions.Read)).ToArray();
          var propAttr = GetProperties(Activator.CreateInstance<T>());
          var joinAttr = GetJoinAttributeProperties<T>();
 
-         // armazena os campos das tabelas
+         // stores the table fields
          var cols = new List<string>(GetColumnsFromEntity(tabAttr, propAttr));
 
-         // armazena os comandos join existentes
+         // stores the existing join commands
          var joins = new List<string>(GetJoinsFromEntity(tabAttr, joinAttr));
 
-         // comando de consulta
+         // query command
          string query = "SELECT {0} FROM {1} ORDER BY {2};";
 
-         // quando a tabela possui exclusão virtual
-         // deve haver um filtro apenas dos registrso ativos
+         // when the table has virtual exclusion
+         // there should be a filter only of active records
          var tab = tabAttr.FirstOrDefault(a => a.VirtualDelete == true);
 
          if (tab != null)
-            query = "SELECT {0} FROM {1} WHERE (t0.ativo = @ativo) ORDER BY {2};";
+            query = "SELECT {0} FROM {1} WHERE (t{3}.ativo = @ativo) ORDER BY {2};";
 
          string columns = string.Join(", ", cols);
          string tables = string.Format("{0} AS t{1} {2}", tabAttr[0].TableName, 0, ((joins.Count == 0) ? "" : string.Join(" ", joins))).Trim();
 
-         // cria o comando
+         // creates the command
          var cmd = new SqlCommand();
-         cmd.CommandText = string.Format(query, columns, tables, sortField);
 
-         // define o parâmetro do filtro
+         if (tab == null)
+            cmd.CommandText = string.Format(query, columns, tables, sortField);
+         else
+            cmd.CommandText = string.Format(query, columns, tables, sortField, tab.Index);
+
+         // sets the filter parameter
          if (tab != null)
             cmd.Parameters.Add("@ativo", SqlDbType.Bit).Value = true;
 

@@ -1,20 +1,19 @@
 ﻿/*
 FreeSQL
-Copyright (C) 2016 Fabiano Couto
+Copyright (C) 2016-2019 Fabiano Couto
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -30,56 +29,58 @@ namespace FreeSQL.Database.MsSQL
 {
    internal class DeleteSqlOperation<T> : SqlOperation
    {
-      // variáveis locais
-      private readonly T obj;
+      // local variables
+      private readonly T wObj;
+      private readonly bool wIgnore;
 
-      public DeleteSqlOperation(T obj, SqlConnection connection, SqlTransaction transaction)
+      public DeleteSqlOperation(T obj, bool ignoreVirtual, SqlConnection connection, SqlTransaction transaction)
          : base(connection, transaction)
       {
-         this.obj = obj;
+         wObj = obj;
+         wIgnore = ignoreVirtual;
       }
 
       public override void Execute()
       {
          try
          {
-            // faz a leitura das tabelas com permissão para exclusão (cruD - DELETE)
+            // read tables with delete permission (cruD - DELETE)
             var tables = GetTableAttributes<T>().Where(a => !a.Relationship && a.CRUD.HasFlag(CrudOptions.Delete)).ToArray();
 
             foreach (var t in tables)
             {
-               var delCommand = GetDeleteCommand(obj, t);
+               var delCommand = GetDeleteCommand(t);
                ExecuteCommand(delCommand);
             }
          }
          catch { throw; }
       }
 
-      private SqlCommand GetDeleteCommand(T obj, Table t)
+      private SqlCommand GetDeleteCommand(Table t)
       {
-         // possui permissão para exclusão (cruD - DELETE)?
+         // allowed to delete (cruD - DELETE)?
          if (!t.CRUD.HasFlag(CrudOptions.Delete))
             throw new Exception(string.Format("A tabela {0} não possui permissão para exclusão de registros.", t.TableName));
 
-         // atributos personalizados
-         var prop = GetProperties(obj);
+         // custom attributes
+         var prop = GetProperties(wObj);
 
-         // obtém a chave primária e os dados do campo
+         // obtains the primary key and field data
          var pk = GetPrimaryKeyProperty<T>(t);
          var pf = GetField(pk, t.Index);
 
-         // comando para exclusão física
+         // command for physical exclusion
          string sql = "DELETE FROM {0} WHERE ({1} = @{1});";
 
-         // exclusão do registro é virtual
-         if (t.VirtualDelete)
+         // deletion of the record is virtual
+         if (!wIgnore && t.VirtualDelete)
             sql = "UPDATE {0} SET ativo = @ativo WHERE ({1} = @{1});";
 
-         // cria o comando
+         // creates the command
          var cmd = new SqlCommand();
          cmd.CommandText = string.Format(sql, t.TableName, pf.FieldName);
-         if (t.VirtualDelete) cmd.Parameters.Add("@ativo", SqlDbType.Bit).Value = false;
-         cmd.Parameters.Add(pf.FieldName, (SqlDbType)pf.DatabaseType).Value = pk.GetValue(obj, null);
+         if (!wIgnore && t.VirtualDelete) cmd.Parameters.Add("@ativo", SqlDbType.Bit).Value = false;
+         cmd.Parameters.Add(pf.FieldName, (SqlDbType)pf.DatabaseType).Value = pk.GetValue(wObj, null);
          return cmd;
       }
    }

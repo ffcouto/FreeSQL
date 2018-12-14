@@ -1,20 +1,19 @@
 ﻿/*
 FreeSQL
-Copyright (C) 2016 Fabiano Couto
+Copyright (C) 2016-2019 Fabiano Couto
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -29,22 +28,25 @@ namespace FreeSQL.Database.MsSQL
 {
    internal class DeleteSpecialSqlOperation<T> : SqlOperation
    {
-      // variáveis locais
+      // local variables
       private readonly string[] wColumns;
       private readonly object[] wValues;
+      private readonly bool wIgnore;
 
-      public DeleteSpecialSqlOperation(string column, object value, SqlConnection connection, SqlTransaction transaction)
+      public DeleteSpecialSqlOperation(string column, object value, bool ignoreVirtual, SqlConnection connection, SqlTransaction transaction)
          : base(connection, transaction)
       {
-         this.wColumns = new string[] { column };
-         this.wValues = new object[] { value };
+         wColumns = new string[] { column };
+         wValues = new object[] { value };
+         wIgnore = ignoreVirtual;
       }
 
-      public DeleteSpecialSqlOperation(string[] columns, object[] values, SqlConnection connection, SqlTransaction transaction)
+      public DeleteSpecialSqlOperation(string[] columns, object[] values, bool ignoreVirtual, SqlConnection connection, SqlTransaction transaction)
          : base(connection, transaction)
       {
-         this.wColumns = columns;
-         this.wValues = values;
+         wColumns = columns;
+         wValues = values;
+         wIgnore = ignoreVirtual;
       }
 
       public override void Execute()
@@ -59,47 +61,47 @@ namespace FreeSQL.Database.MsSQL
 
       private SqlCommand GetDeleteSpecialCommand(string[] columns, object[] values)
       {
-         // verifica se o número de colunas e valores são iguais
+         // checks whether the number of columns and values are equal
          if (columns.Length != values.Length)
             throw new Exception("O número de colunas e valores são inconsistentes.");
 
-         // atributos personalizados
+         // custom attributes
          var t = GetTableAttributes<T>()[0];
 
-         // possui permissão para exclusão (cruD - DELETE)?
+         // allowed to delete (cruD - DELETE)?
          if (!t.CRUD.HasFlag(CrudOptions.Delete))
             throw new Exception(string.Format("A tabela {0} não possui permissão para exclusão de registros.", t.TableName));
 
-         // propriedades da tabela
+         // table properties
          var filter = new List<string>();
 
-         // cria um novo comando
+         // creates the command
          var cmd = new SqlCommand();
 
-         // cria os filtros da cláusula where conforme colunas e valores especificados
+         // creates where clause filters according to columns and values specified
          for (int i = 0; i < columns.Length; i++)
          {
-            // obtém os atributos da coluna
+            // get the attributes of the column
             var pf = (SqlField)GetFieldAttributes<T>().Where(a => a.FieldName.ToLower() == columns[i].ToLower()).ToList()[0];
 
-            // adiciona na lista temporária
+            // add to temporary list
             filter.Add(string.Format("({0} = @{0})", pf.FieldName));
 
-            // adiciona o parâmetro correspondente a coluna
+            // adds the parameter corresponding to column
             cmd.Parameters.Add(string.Format("@{0}", pf.FieldName), (SqlDbType)pf.DatabaseType).Value = ParseValue(values[i]);
          }
 
-         // comando para exclusão física
+         // command for physical exclusion
          string sql = "DELETE FROM {0} WHERE {1};";
          string where = string.Join(" AND ", filter);
 
-         // exclusão do registro é virtual
-         if (t.VirtualDelete)
+         // deletion of the record is virtual
+         if (!wIgnore && t.VirtualDelete)
             sql = "UPDATE {0} SET ativo = @ativo WHERE {1};";
 
-         // define o comando a ser executado
+         // define the command to execute
          cmd.CommandText = string.Format(sql, t.TableName, where);
-         if (t.VirtualDelete) cmd.Parameters.Insert(0, new SqlParameter("@ativo", SqlDbType.Bit) { Value = false });
+         if (!wIgnore && t.VirtualDelete) cmd.Parameters.Insert(0, new SqlParameter("@ativo", SqlDbType.Bit) { Value = false });
          return cmd;
       }
    }

@@ -27,15 +27,15 @@ using FreeSQL.Common;
 
 namespace FreeSQL.Database.MsSQL
 {
-   internal class CustomSelectSqlOperation<T> : SqlOperation
+   internal class SelectValueSqlOperation<T> : SqlOperation
    {
       // local variables
       private readonly string wCommand;
       private readonly SearchParam[] wParams;
 
-      private T[] retObjs = new T[0];
+      private T retValue = default(T);
 
-      public CustomSelectSqlOperation(string commandText, SearchParam[] parameters, SqlConnection connection, SqlTransaction transaction)
+      public SelectValueSqlOperation(string commandText, SearchParam[] parameters, SqlConnection connection, SqlTransaction transaction)
          : base(connection, transaction)
       {
          wCommand = commandText;
@@ -75,18 +75,19 @@ namespace FreeSQL.Database.MsSQL
             }
 
             // executes the command and returns the records
-            var objs = LoadDataFromCommand(readCommand);
+            object vRet = readCommand.ExecuteScalar();
 
-
-            // TODO: match table fields to object properties
-
+            // change value for T object
+            var t = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+            object safeValue = (vRet == DBNull.Value || vRet == null) ? null : Convert.ChangeType(vRet, t);
+            retValue = (T)safeValue;
          }
          catch { throw; }
       }
 
-      public T[] ReturnObjects
+      public T ReturnValue
       {
-         get { return retObjs; }
+         get { return retValue; }
       }
    }
 }

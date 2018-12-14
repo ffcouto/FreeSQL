@@ -1,20 +1,19 @@
 ﻿/*
 FreeSQL
-Copyright (C) 2016 Fabiano Couto
+Copyright (C) 2016-2019 Fabiano Couto
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -40,17 +39,17 @@ namespace FreeSQL.Database.OleDb
       public SelectSpecialOleDbOperation(string column, string comparison, object value, OleDbConnection connection, OleDbTransaction transaction)
          : base(connection, transaction)
       {
-         this.wColumns = new string[] { column };
-         this.wOperators = new string[] { comparison };
-         this.wValues = new object[] { value };
+         wColumns = new string[] { column };
+         wOperators = new string[] { comparison };
+         wValues = new object[] { value };
       }
 
       public SelectSpecialOleDbOperation(string[] columns, string[] comparison, object[] values, OleDbConnection connection, OleDbTransaction transaction)
          : base(connection, transaction)
       {
-         this.wColumns = columns;
-         this.wOperators = comparison;
-         this.wValues = values;
+         wColumns = columns;
+         wOperators = comparison;
+         wValues = values;
       }
 
       public override void Execute()
@@ -71,52 +70,52 @@ namespace FreeSQL.Database.OleDb
 
       private OleDbCommand GetSelectSpecialCommand(string[] columns, string[] comparison, object[] values)
       {
-         // verifica se o número de colunas e valores são iguais
+         // checks whether the number of columns and values are equal
          if ((columns.Length != comparison.Length) || (columns.Length != values.Length))
             throw new Exception("O número de colunas e valores são inconsistentes.");
 
-         // atributos personalizados com permissão para leitura (cRud - Read)
+         // custom attributes with read permission (cRud - Read)
          var tabAttr = GetTableAttributes<T>().Where(a => a.CRUD.HasFlag(CrudOptions.Read)).ToArray();
          var propAttr = GetProperties(Activator.CreateInstance<T>());
          var joinAttr = GetJoinAttributeProperties<T>();
          var fldAttr = GetFieldAttributes<T>();
 
-         // armazena os campos das tabelas
+         // stores the tables fields
          var cols = new List<string>(GetColumnsFromEntity(tabAttr, propAttr));
 
-         // armazena os comandos join existentes
+         // stores the existing join commands
          var joins = new List<string>(GetJoinsFromEntity(tabAttr, joinAttr));
 
-         // armazena os campos substituindo por um alias para evitar duplicidade
+         // stores the fields by replacing an alias to avoid duplicity
          var alias = new List<string>(GetAliasForColumns(columns));
 
-         // cria um novo comando
+         // creates command
          var cmd = new OleDbCommand();
 
-         // armazena a lista de filtros do comando
+         // stores the filter list of the command
          var filter = new List<string>(GetColumnsAndParametersForFilters(cmd, fldAttr, columns, alias.ToArray(), comparison, values));
 
-         // quando a tabela possui exclusão virtual
-         // deve haver um filtro apenas dos registrso ativos
+         // when the table has virtual exclusion
+         // there should be a filter only of active records
          if (tabAttr[0].VirtualDelete)
          {
             filter.Add(string.Format("(t{0}.ativo = ?)", tabAttr[0].Index));
             cmd.Parameters.Add("@ativo", OleDbType.Boolean).Value = true;
          }
 
-         // Provedor OleDb requer uso de parenteses na expressão de joins
+         // OleDb provider requires use of parentheses in expression of joins
          for (int i = 0; i < joins.Count; i++)
             joins[i] = string.Concat(joins[i], ")");
 
          string parentesis = string.Join("", ArrayList.Repeat("(", joins.Count).ToArray());
 
-         // comando de consulta
+         // query command
          string query = "SELECT {0} FROM {1} WHERE {2};";
          string fields = string.Join(", ", cols);
          string tables = string.Format("{0} AS t{1} {2}", tabAttr[0].TableName, 0, ((joins.Count == 0) ? "" : string.Join(" ", joins))).Trim();
          string where = string.Join(" AND ", filter);
 
-         // define o comando a ser executado
+         // sets the command to execute
          cmd.CommandText = string.Format(query, fields, tables, where);
          return cmd;
       }

@@ -1,20 +1,19 @@
 ﻿/*
 FreeSQL
-Copyright (C) 2016 Fabiano Couto
+Copyright (C) 2016-2019 Fabiano Couto
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -28,37 +27,37 @@ using FreeSQL.Common;
 
 namespace FreeSQL.Database.OleDb
 {
-   internal class CustomSelectOleDbOperation : OleDbOperation
+   internal class CustomSelectOleDbOperation<T> : OleDbOperation
    {
-      // variáveis locais
+      // local variables
       private readonly string wCommand;
       private readonly SearchParam[] wParams;
 
-      private DataRow[] retObjs = new DataRow[0];
+      private T[] retObjs = new T[0];
 
       public CustomSelectOleDbOperation(string sqlCommand, SearchParam[] parameters, OleDbConnection connection, OleDbTransaction transaction)
          : base(connection, transaction)
       {
-         this.wCommand = sqlCommand;
-         this.wParams = parameters;
+         wCommand = sqlCommand;
+         wParams = parameters;
       }
 
       public override void Execute()
       {
          try
          {
-            // define o comando
-            var readCommand = new OleDbCommand(wCommand, (OleDbConnection)conn, (OleDbTransaction)trans);
+            // creates the command
+            var readCommand = new OleDbCommand(wCommand, (OleDbConnection)_conn, (OleDbTransaction)_trans);
 
-            // há um parâmetro de pesquisa definido
+            // there is a definite search parameter
             if (wParams != null && wParams.Length > 0)
             {
-               // define a lista de parâmetros necessários
+               // sets the list of required parameters
                var pList = new List<OleDbParameter>();
 
                foreach (var wParam in wParams)
                {
-                  // operador IN ou NOT IN; utiliza uma lista separada por vírgula
+                  // operator IN or NOT IN; uses a comma-separated list
                   if (wParam.Comparison == SearchComparison.OneOf || wParam.Comparison == SearchComparison.NotOneOf)
                   {
                      string[] optList = wParam.ParseValue.ToString().Split(',');
@@ -71,17 +70,21 @@ namespace FreeSQL.Database.OleDb
                   }
                }
 
-               // adiciona os parâmetros ao comando
+               // adds the parameters to the command
                readCommand.Parameters.AddRange(pList.ToArray());
             }
 
-            // executa o comando e retorna os registros
-            retObjs = LoadDataFromCommand(readCommand);
+            // executes the command and returns the records
+            var objs = LoadDataFromCommand(readCommand);
+
+
+            // TODO: match table fields to object properties
+
          }
          catch { throw; }
       }
 
-      public DataRow[] ReturnObjects
+      public T[] ReturnObjects
       {
          get { return retObjs; }
       }

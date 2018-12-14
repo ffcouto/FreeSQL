@@ -1,20 +1,19 @@
 ﻿/*
 FreeSQL
-Copyright (C) 2016 Fabiano Couto
+Copyright (C) 2016-2019 Fabiano Couto
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -24,10 +23,50 @@ namespace FreeSQL.Common
 {
    public abstract class SearchTransaction : Transaction
    {
-      public SearchTransaction(FreeSQLDatabase database)
-         : base(database)
-      { }
+      protected readonly SearchEngine _engine;
+      private object[] _result;
 
-      public abstract DataRow[] Result { get; }
+      public SearchTransaction(SearchEngine searchEngine, FreeSQLDatabase database)
+         : base(database)
+      {
+         _engine = searchEngine;
+         _result = new object[0];
+      }
+
+      protected string CommandText { get; set; }
+
+      protected SearchParam[] Parameters { get; set; }
+
+      protected string LogAction { get; set; }
+
+      protected string ExtraInfo { get; set; }
+
+      public virtual object[] Result
+      {
+         get { return _result; }
+      }
+
+      public override void Execute()
+      {
+         // open connection
+         _db.OpenConnection();
+
+         try
+         {
+            // runs search
+            _result = _db.CustomSelect<object>(CommandText, Parameters);
+
+            // closes connection
+            _db.CloseConnection();
+
+            // save log
+            SaveLog(LogAction, ExtraInfo);
+         }
+         catch
+         {
+            _db.CloseConnection();
+            _result = new object[0];
+         }
+      }
    }
 }

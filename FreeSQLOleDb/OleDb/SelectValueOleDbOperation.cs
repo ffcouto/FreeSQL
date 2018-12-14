@@ -19,23 +19,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
+using System.Data.OleDb;
 using System.Linq;
 using System.Text;
 using FreeSQL.Backwork;
 using FreeSQL.Common;
 
-namespace FreeSQL.Database.MsSQL
+namespace FreeSQL.Database.OleDb
 {
-   internal class CustomSelectSqlOperation<T> : SqlOperation
+   internal class SelectValueOleDbOperation<T> : OleDbOperation
    {
       // local variables
       private readonly string wCommand;
       private readonly SearchParam[] wParams;
 
-      private T[] retObjs = new T[0];
+      private T retValue = default(T);
 
-      public CustomSelectSqlOperation(string commandText, SearchParam[] parameters, SqlConnection connection, SqlTransaction transaction)
+      public SelectValueOleDbOperation(string commandText, SearchParam[] parameters, OleDbConnection connection, OleDbTransaction transaction)
          : base(connection, transaction)
       {
          wCommand = commandText;
@@ -47,13 +47,13 @@ namespace FreeSQL.Database.MsSQL
          try
          {
             // creates the command
-            var readCommand = new SqlCommand(wCommand, (SqlConnection)_conn, (SqlTransaction)_trans);
+            var readCommand = new OleDbCommand(wCommand, (OleDbConnection)_conn, (OleDbTransaction)_trans);
 
             // there is a definite search parameter
             if (wParams != null && wParams.Length > 0)
             {
                // sets the list of required parameters
-               var pList = new List<SqlParameter>();
+               var pList = new List<OleDbParameter>();
 
                foreach (var wParam in wParams)
                {
@@ -62,11 +62,11 @@ namespace FreeSQL.Database.MsSQL
                   {
                      string[] optList = wParam.ParseValue.ToString().Split(',');
                      for (int i = 0; i < optList.Length; i++)
-                        pList.Add(new SqlParameter(string.Format("@{0}{1}", wParam.FieldName.Replace(".", "_"), i), (SqlDbType)wParam.DataType) { Value = optList[i] });
+                        pList.Add(new OleDbParameter(string.Format("@{0}{1}", wParam.FieldName.Replace(".", "_"), i), (OleDbType)wParam.DataType) { Value = optList[i] });
                   }
                   else
                   {
-                     pList.Add(new SqlParameter(string.Format("@{0}", wParam.FieldName.Replace(".", "_")), (SqlDbType)wParam.DataType) { Value = wParam.ParseValue });
+                     pList.Add(new OleDbParameter(string.Format("@{0}", wParam.FieldName.Replace(".", "_")), (OleDbType)wParam.DataType) { Value = wParam.ParseValue });
                   }
                }
 
@@ -75,18 +75,19 @@ namespace FreeSQL.Database.MsSQL
             }
 
             // executes the command and returns the records
-            var objs = LoadDataFromCommand(readCommand);
+            object vRet = readCommand.ExecuteScalar();
 
-
-            // TODO: match table fields to object properties
-
+            // change value for T object
+            var t = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+            object safeValue = (vRet == DBNull.Value || vRet == null) ? null : Convert.ChangeType(vRet, t);
+            retValue = (T)safeValue;
          }
          catch { throw; }
       }
 
-      public T[] ReturnObjects
+      public T ReturnValue
       {
-         get { return retObjs; }
+         get { return retValue; }
       }
    }
 }

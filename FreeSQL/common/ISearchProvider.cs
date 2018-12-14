@@ -17,20 +17,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
-using System.Data;
 
-namespace FreeSQL.Database
+namespace FreeSQL.Common
 {
-   public interface ITransaction
+   public interface ISearchProvider
    {
-      bool KeepAlive { get; set; }
-      
-      void BeginTransaction();
-      void BeginTransaction(bool keepAlive);
-      void CommitTransaction();
-      void CommitTransaction(bool keepAlive);
-      void RollbackTransaction();
-      void RollbackTransaction(bool keepAlive);
-      IDbTransaction GetCurrentTransaction();
+      string ToString(object key);
    }
 }

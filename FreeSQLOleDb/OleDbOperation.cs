@@ -1,20 +1,19 @@
 ﻿/*
 FreeSQL
-Copyright (C) 2016 Fabiano Couto
+Copyright (C) 2016-2019 Fabiano Couto
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -44,8 +43,8 @@ namespace FreeSQL.Database.OleDb
 
       protected override DataRow[] LoadDataFromCommand(IDbCommand command)
       {
-         command.Connection = (OleDbConnection)conn;
-         command.Transaction = (OleDbTransaction)trans;
+         command.Connection = (OleDbConnection)_conn;
+         command.Transaction = (OleDbTransaction)_trans;
          var adapter = new OleDbDataAdapter((OleDbCommand)command);
          var dataset = new DataSet();
          adapter.Fill(dataset);
@@ -55,8 +54,8 @@ namespace FreeSQL.Database.OleDb
 
       protected override DataRow LoadDataRowFromCommand(IDbCommand command)
       {
-         command.Connection = (OleDbConnection)conn;
-         command.Transaction = (OleDbTransaction)trans;
+         command.Connection = (OleDbConnection)_conn;
+         command.Transaction = (OleDbTransaction)_trans;
          var adapter = new OleDbDataAdapter((OleDbCommand)command);
          var dataset = new DataSet();
          adapter.Fill(dataset);
@@ -70,61 +69,61 @@ namespace FreeSQL.Database.OleDb
 
       protected override string[] GetColumnsAndParametersForFilters(IDbCommand command, Field[] fields, string[] columns, string[] alias, string[] operators, object[] values)
       {
-         // armazena os filtros
+         // stores the filters
          var filter = new List<string>();
 
-         // cria os filtros da cláusula where conforme colunas e valores especificados
+         // creates Where clause filters according to columns and values specified
          for (int i = 0; i < columns.Length; i++)
          {
-            // obtém os atributos da coluna
+            // get the attributes of the column
             var pf = (OleDbField)fields.Where(a => a.FieldName.ToLower() == columns[i].ToLower()).ToList()[0];
 
-            // casos especiais da clásula where
+            // special cases of the where clause
             if (operators[i].ToUpper() == "IS" || operators[i].ToUpper() == "!IS")
             {
-               // adiciona na lista temporária
+               // add to temporary list
                filter.Add(string.Format("({4}t{0}.{1} {3} {2})", pf.TableIndex, pf.FieldName, values[i],
                   operators[i], (operators[i].StartsWith("!") ? "NOT " : "")));
             }
 
-            // caso especial IN / NOT IN; é necessário informar para item da lista um parâmetro
+            // special case IN / NOT IN; it is necessary to inform a list item of a parameter
             else if (operators[i].ToUpper() == "IN" || operators[i].ToUpper() == "!IN")
             {
-               // converte o conteúdo de values[i] em um tipo Enumarable
+               // converts the contents of values [i] to an IEnumerable type
                var val = values[i] as IEnumerable;
 
-               // o parametro passado não é uma matriz
+               // parameter is not an array
                if (val == null)
                   throw new Exception("Valor do parâmetro para o operador IN não é uma matriz de objetos válida.");
 
-               // obtém a matriz a partir do valor
+               // gets the array from the value
                var o = val.Cast<object>().ToArray();
 
-               // lista de campos para cada valor da matriz
+               // list of fields for each array value
                var inFlds = new List<string>();
                for (int p = 0; p < o.Length; p++)
                   inFlds.Add("?");
 
-               // adiciona na lista temporária
+               // add to temporary list
                filter.Add(string.Format("({3}t{0}.{1} IN ({2}))", pf.TableIndex, pf.FieldName,
                   string.Join(", ", inFlds), (operators[i].StartsWith("!") ? "NOT " : "")));
 
-               // adiciona o parâmetro para cada valor da matriz
+               // adds the parameter to each array value
                for (int p = 0; p < o.Length; p++)
                   ((OleDbCommand)command).Parameters.Add(inFlds[p], (OleDbType)pf.DatabaseType).Value = ParseValue(o[p]);
             }
 
-            // outros casos
+            // other cases
             else
             {
-               // adiciona na lista temporária
+               // add to temporary list
                filter.Add(string.Format("(t{0}.{1} {2} ?)", pf.TableIndex, pf.FieldName, operators[i]));
-               // adiciona o parâmetro correspondente a coluna
+               // adds the parameter corresponding to column
                ((OleDbCommand)command).Parameters.Add(string.Format("@{0}", alias[i]), (OleDbType)pf.DatabaseType).Value = ParseValue(values[i], operators[i]);
             }
          }
 
-         // retorna a lista de filtros
+         // returns filter list
          return filter.ToArray();
       }
 
@@ -133,7 +132,7 @@ namespace FreeSQL.Database.OleDb
          var fields = new List<Field>();
          var properties = typeof(T).GetProperties();
 
-         // faz a leitura das propriedades do objeto
+         // read the properties of the object
          foreach (var info in properties)
          {
             var field = info.GetCustomAttributes(true).Where(a => a.GetType() == typeof(OleDbField))
@@ -156,53 +155,53 @@ namespace FreeSQL.Database.OleDb
 
       internal protected OleDbCommand GetInsertCommand<T>(T obj, Table t)
       {
-         // possui permissão para inclusão (Crud - CREATE)?
+         // allowed to include (Crud - CREATE)?
          if (!t.CRUD.HasFlag(CrudOptions.Create))
             throw new Exception(string.Format("A tabela {0} não possui permissão para inclusão de registros.", t.TableName));
 
-         // faz a leitura dos atributos personalizados
+         // reads custom attributes
          var prop = GetProperties(obj);
 
-         // variaveis locais
+         // local variables
          var fList = new List<string>();
          var vList = new List<string>();
 
-         // cria o comando
+         // creates command
          var cmd = new OleDbCommand();
 
-         // faz a leituras das propriedades
+         // read the properties
          foreach (PropertyInfo item in prop)
          {
             if (item.GetCustomAttributes(true).GetLength(0) > 0)
             {
-               // obtém os atributos associados ao campo
+               // gets the attributes associated with the field
                var f = GetField(item, t.Index);
                var k = GetKeyAttribute(item, t);
 
-               // é o campo chave/identidade?
-               bool keyId = (k != null && k.IsPrimary);
+               // is the key/identity field?
+               bool keyId = (k != null && k.IsIdentity);
 
                if (!keyId && f != null && f.FieldName != "" && f.TableIndex == t.Index)
                {
-                  // obtém o valor da propriedade da entidade
+                  // gets the value of the entity's property
                   var value = item.GetValue(obj, null);
 
-                  // preenche a lista de campos e valores
+                  // fill list of fields and values
                   fList.Add(f.FieldName);
                   vList.Add("?");
 
-                  // inclui um parametro ao comando
+                  // includes a parameter to the command
                   cmd.Parameters.Add(f.FieldName, (OleDbType)f.DatabaseType).Value = ParseValue(value);
                }
             }
          }
 
-         // adiciona o campo marcador de exclusão virtual
+         // adds the virtual exclusion marker field
          if (t.VirtualDelete)
          {
-            // verifica se o campo "Ativo" já está na lista;
-            // isso evita duplicação do campo e do parâmetro e
-            // consequentemente, erro na instrução
+            // verifies that the "Active" field is already in the list;
+            // this avoids duplication of field and parameter e
+            // consequently, error in the statement
             if (!fList.Contains("ativo"))
             {
                fList.Add("ativo");
@@ -211,28 +210,28 @@ namespace FreeSQL.Database.OleDb
             }
          }
 
-         // converte as listas
+         // convert lists
          string fields = string.Join(", ", fList);
          string values = string.Join(", ", vList);
 
-         // define o comando e o atribui
+         // define the command and assign it
          string query = "INSERT INTO {0} ({1}) VALUES ({2});";
          cmd.CommandText = string.Format(query, t.TableName, fields, values);
 
-         // retorna o comando
+         // returns the command
          return cmd;
       }
 
       internal protected OleDbCommand GetNextIDCommand<T>(Table t)
       {
-         // obtém a chave primária e os dados do campo
+         // obtains the primary key and field data
          var pk = GetPrimaryKeyProperty<T>(t);
          var pf = GetField(pk, t.Index);
 
-         // comando de consulta
+         // query command
          string query = "SELECT IIF(ISNULL(MAX({0})), 1, MAX({0}) + 1) AS next_id FROM {1};";
 
-         // cria o comando
+         // creates the command
          var cmd = new OleDbCommand();
          cmd.CommandText = string.Format(query, pf.FieldName, t.TableName);
          return cmd;

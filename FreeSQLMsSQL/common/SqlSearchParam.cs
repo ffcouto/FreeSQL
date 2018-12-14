@@ -1,20 +1,19 @@
 ﻿/*
 FreeSQL
-Copyright (C) 2016 Fabiano Couto
+Copyright (C) 2016-2019 Fabiano Couto
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -25,21 +24,30 @@ namespace FreeSQL.Common
 {
    public class SqlSearchParam : SearchParam
    {
-      public SqlSearchParam(string fieldName, string fieldText, SearchComparison comparison, object dataType)
+      public SqlSearchParam(string fieldName, string fieldText, string paramName, SearchComparison comparison, object dataType, bool needCriteria)
       {
-         this.FieldName = fieldName;
-         this.FieldText = fieldText;
-         this.Comparison = comparison;
-         this.DataType = dataType;
+         FieldName = fieldName;
+         FieldText = fieldText;
+         ParamName = paramName;
+         Comparison = comparison;
+         DataType = dataType;
+         NoCriteria = !needCriteria;
+         Hidden = false;
       }
 
-      public string FieldName { get; private set; }
+      public string FieldName { get; }
 
-      public string FieldText { get; private set; }
+      public string FieldText { get; }
 
-      public SearchComparison Comparison { get; private set; }
+      public string ParamName { get; }
 
-      public object DataType { get; private set; }
+      public SearchComparison Comparison { get; }
+
+      public object DataType { get; }
+
+      public bool NoCriteria { get; }
+
+      public bool Hidden { get; internal set; }
 
       public object Value { get; set; }
 
@@ -47,10 +55,10 @@ namespace FreeSQL.Common
       {
          get
          {
-            if (this.Value.GetType() == typeof(string))
-               return (Comparison == SearchComparison.Like) ? "%" + this.Value.ToString().Replace("*", "%") + "%" : this.Value;
+            if (Value.GetType() == typeof(string))
+               return (Comparison == SearchComparison.Like) ? "%" + Value.ToString().Replace("*", "%") + "%" : Value;
             else
-               return (Comparison == SearchComparison.Like) ? "%" + this.Value + "%" : this.Value;
+               return (Comparison == SearchComparison.Like) ? "%" + Value + "%" : Value;
          }
       }
 
@@ -58,34 +66,39 @@ namespace FreeSQL.Common
       {
          get
          {
-            if (this.Comparison == SearchComparison.OneOf || this.Comparison == SearchComparison.NotOneOf)
+            // there is no comparison
+            if (Comparison == SearchComparison.None) return string.Empty;
+
+            // the criteria is a list
+            if (Comparison == SearchComparison.OneOf || Comparison == SearchComparison.NotOneOf)
             {
-               string[] optList = this.ParseValue.ToString().Split(',');
+               string[] optList = ParseValue.ToString().Split(',');
                var inList = new List<string>();
 
                for (int i = 0; i < optList.Length; i++)
-                  inList.Add(string.Format("@{0}{1}", this.FieldName.Replace(".", "_"), i));
+                  inList.Add(string.Format("@{0}{1}", ParamName.Replace(".", "_"), i));
                
-               return string.Format("({0} {1} ({2}))", this.FieldName, this.Comparison.GetDescription().Replace("!", "NOT "), string.Join(", ", inList));
+               return string.Format("({0} {1} ({2}))", FieldName, Comparison.GetDescription().Replace("!", "NOT "), string.Join(", ", inList));
             }
-            else if (this.Comparison == SearchComparison.IsNull)
+
+            // the criteria is nullable
+            else if (Comparison == SearchComparison.IsNull || Comparison == SearchComparison.NotIsNull)
             {
-               return string.Format("({0} IS NULL)", this.FieldName);
+               bool notOperator = (Comparison == SearchComparison.NotIsNull);
+               return string.Format("({1}{0} IS NULL)", FieldName, (notOperator ? "NOT " : ""));
             }
-            else if (this.Comparison == SearchComparison.NotIsNull)
-            {
-               return string.Format("(NOT {0} IS NULL)", this.FieldName);
-            }
+
+            // others cases
             else
             {
-               return string.Format("({0} {1} @{2})", this.FieldName, this.Comparison.GetDescription(), this.FieldName.Replace(".", "_"));
+               return string.Format("({0} {1} @{2})", FieldName, Comparison.GetDescription(), ParamName.Replace(".", "_"));
             }
          }
       }
 
       public override string ToString()
       {
-         return this.FieldText;
+         return FieldText;
       }
    }
 }

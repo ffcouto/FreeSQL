@@ -1,20 +1,19 @@
 ﻿/*
 FreeSQL
-Copyright (C) 2016 Fabiano Couto
+Copyright (C) 2016-2019 Fabiano Couto
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -31,84 +30,84 @@ namespace Teste
       static void Main(string[] args)
       {
          // *******************************************************************
-         // Teste para o provedor OleDb através da biblioteca FreeSQLOleDb
+         // Testing for the OleDb provider through the FreeSQLOleDb library
          // *******************************************************************
 
-         // define o comando de conexão
+         // sets the connection command
          string connString = string.Format("Provider=Microsoft.Jet.OLEDB.4.0;Data Source={0};User ID=admin;Password=;Jet OLEDB:Database Password=;",
             Path.Combine(Directory.GetCurrentDirectory(), "teste.mdb"));
 
-         // instancia o acesso ao banco de dados através da biblioteca FreeSQL
+         // Instance access to the database through the FreeSQL library
          var db = new FreeSQLOleDb(connString, null);
 
          try
          {
-            // abre a conexão
+            // open connection
             db.OpenConnection();
-            Console.WriteLine("Conexão aberta.");
+            Console.WriteLine("The connection is open.");
 
-            // cria um novo cliente
-            var cli = new Cliente();
-            cli.Nome = "Zezinho";
-            cli.DataNascimento = new DateTime(2016, 1, 1);
+            // creates a new customer
+            var c = new Customer();
+            c.Name = "Zezinho";
+            c.BirthDate = new DateTime(2016, 1, 1);
 
-            // Observação: como o código é auto-numerado não é necessário informar o número;
-            // quanto a propriedade ativo, é recomendado setar para true no construtor da classe,
-            // do contrário será necessário informar a cada instância do objeto, uma vez que o 
-            // registro será gravado e marcado como excluído no banco de dados
-            cli.Ativo = true;
+            // Note: because the ID is auto-increment, it's not necessary to enter the number;
+            // as the 'Active' property, it's recommended to set to true in the class constructor,
+            // otherwise it will be necessary to inform each instance of the object, since the
+            // record will be written and marked as deleted in the database.
+            c.Active = true;
 
-            // insere o registro e recupera o novo código
-            var novoCod = (int)db.Insert(cli)[0];
-            Console.WriteLine("Cliente cadastrado com sucesso.");
+            // inserts the record and retrieves the new code
+            var newID = (int)db.Insert(c)[0];
+            Console.WriteLine("Customer registered successfully.");
 
-            // faz a leitura do novo registro inserido
-            var lerCli = db.Select<Cliente>(novoCod);
-            Console.WriteLine("Consultando os dados do cliente cadastrado.");
-            Console.WriteLine("   Código: " + lerCli.Codigo);
-            Console.WriteLine("   Nome  : " + lerCli.Nome);
-            Console.WriteLine("   Data nasc: " + lerCli.DataNascimento.ToString());
-            Console.WriteLine("   Ativo: " + (lerCli.Ativo ? "Sim" : "Não"));
+            // reads the new inserted record
+            var readCustomer = db.Select<Customer>(newID);
+            Console.WriteLine("Consulting customer data registered.");
+            Console.WriteLine("   ID    : " + readCustomer.ID);
+            Console.WriteLine("   Name  : " + readCustomer.Name);
+            Console.WriteLine("   Birth date: " + readCustomer.BirthDate.ToString());
+            Console.WriteLine("   Active:" + (readCustomer.Active ? "Sim" : "Não"));
             Console.WriteLine("");
 
-            Console.WriteLine("Digite um novo nome para o cliente: ");
-            string novoNome = Console.ReadLine();
+            Console.WriteLine("Enter a new name for the customer: ");
+            string newNome = Console.ReadLine();
 
-            // altera o nome do cliente
-            lerCli.Nome = novoNome;
+            // change the customer name
+            readCustomer.Name = newNome;
 
-            // salva o cliente
-            db.Update(lerCli);
-            Console.WriteLine("Cliente alterado com sucesso.");
+            // updates customer record
+            db.Update(readCustomer);
+            Console.WriteLine("Customer successfully changed.");
 
-            // pesquisa de clientes
-            // a função requer o nome do campo, o operador e o valor de pesquisa
-            // quando o operador é suprimido a pesquisa por padrão utiliza "="
-            var pesqNome = db.SelectSpecial<Cliente>("nome", "LIKE", "ze%");
-            Console.WriteLine(string.Format("Consulta de clientes que no nome contenham 'ze' retornou {0} resultado(s).", pesqNome.Length));
-            
-            // para uso do operador IN é necessário atribuir uma matriz (array) de valores,
-            // esse valor pode ser de qualquer tipo de dados
-            var pesqCod = db.SelectSpecial<Cliente>("codigo", "IN", new int[] { 1, 2, 3 });
-            Console.WriteLine(string.Format("Consulta de clientes com os códigos 1, 2 e 3 retornou {0} resultado(s).", pesqCod.Length));
+            // customer search
+            // the function requires the name of the field, the operator and the search value
+            // when the operator is suppressed the search by default uses "="
+            var findName = db.SelectSpecial<Customer>("nome", "LIKE", "ze%");
+            Console.WriteLine(string.Format("Customer search that the name contain 'ze' {0} returned result (s).", findName.Length));
 
-            // use o método SelectAll para retornar todos os registros ativos da tabela
-            var todos = db.SelectAll<Cliente>("nome");
-            Console.WriteLine(string.Format("Consulta de todos os clientes retornou {0} resultado(s).", todos.Length));
+            // for use of the IN operator it is necessary to assign an array of values,
+            // this value can be of any data type
+            var findID = db.SelectSpecial<Customer>("codigo", "IN", new int[] { 1, 2, 3 });
+            Console.WriteLine(string.Format("Customer search with id's 1, 2 and 3 returned {0} result (s).", findID.Length));
 
-            // excluindo o cliente
-            db.Delete(lerCli);
-            Console.WriteLine(string.Format("Cliente '{0}' excluído com sucesso.", lerCli.Nome));
+            // use the SelectAll method to return all active records in the table
+            var all = db.SelectAll<Customer>("nome");
+            Console.WriteLine(string.Format("Query from all clients returned {0} result (s).", all.Length));
 
-            // limpa os recursos
-            cli = null;
-            lerCli = null;
+            // excluding customer
+            db.Delete(readCustomer);
+            Console.WriteLine(string.Format("Customer '{0}' deleted successfully.", readCustomer.Name));
+
+            // clean resources
+            c = null;
+            readCustomer = null;
 
             Environment.Exit(0);
          }
          catch (Exception ex)
          {
-            Console.WriteLine("Ocorreu o seguinte erro ao abrir a conexão:\n" + ex.Message);
+            Console.WriteLine("The following error occurred while opening the connection:\n" + ex.Message);
             db.CloseConnection();
             db = null;
             Environment.Exit(1);

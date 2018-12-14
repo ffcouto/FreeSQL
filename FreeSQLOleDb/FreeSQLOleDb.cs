@@ -1,20 +1,19 @@
 ﻿/*
 FreeSQL
-Copyright (C) 2016 Fabiano Couto
+Copyright (C) 2016-2019 Fabiano Couto
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -33,21 +32,21 @@ namespace FreeSQL.Database.OleDb
    {
       private readonly ILogger LogDatabase;
 
-      private OleDbConnection conn;
-      private OleDbTransaction trans;
+      private OleDbConnection _conn;
+      private OleDbTransaction _trans;
 
       public FreeSQLOleDb(string dbConnString, ILogger dbLogger)
       {
-         this.ConnectionString = dbConnString;
-         this.LogDatabase = dbLogger;
+         ConnectionString = dbConnString;
+         LogDatabase = dbLogger;
       }
 
-      // armazena a string de conexão
+      // stores the connection string
       public virtual string ConnectionString { get; set; }
 
       public virtual string GetUserLogged()
       {
-         // TODO:
+         // TODO: How get user logged in OleDB (MsAccess)?
          return "N/D";
       }
 
@@ -65,59 +64,55 @@ namespace FreeSQL.Database.OleDb
 
       internal protected OleDbConnection CurrentConnection
       {
-         get { return this.conn; }
+         get { return _conn; }
       }
 
       internal protected OleDbTransaction CurrentTransaction
       {
-         get { return this.trans; }
+         get { return _trans; }
       }
 
       public virtual void OpenConnection()
       {
-         // quando há uma transação em uso,
-         // não permite abrir novas conexões
-         if (trans != null)
-            return;
+         // when there is a transaction in use,
+         // does not allow opening new connections
+         if (_trans != null) return;
 
-         // quando a propriedade KeepAlive é true,
-         // novas conexões não são permitidas
-         if (this.KeepAlive && conn != null && conn.State == ConnectionState.Open)
-            return;
+         // when the KeepAlive property is true,
+         // new connections are not allowed
+         if (KeepAlive && _conn != null && _conn.State == ConnectionState.Open) return;
 
          try
          {
-            // inicia uma nova conexão e abre
-            conn = new OleDbConnection(this.ConnectionString);
-            conn.Open();
+            // starts a new connection and opens it
+            _conn = new OleDbConnection(ConnectionString);
+            _conn.Open();
          }
          catch { throw; }
       }
 
       public virtual void CloseConnection()
       {
-         // quando há uma transação em uso,
-         // não permite fechar
-         if (trans != null)
-            return;
+         // when there is a transaction in use,
+         // ignores the close command
+         if (_trans != null) return;
 
-         // quando a propriedade KeepAlive é true,
-         // não é permitido fechar a conexão
-         if (this.KeepAlive && conn != null && conn.State == ConnectionState.Open)
-            return;
+         // when the KeepAlive property is true,
+         // it is not allowed to close the connection
+         if (KeepAlive && _conn != null && _conn.State == ConnectionState.Open) return;
 
          try
          {
-            // fecha a conexão e libera os recursos
-            if (conn != null) conn.Close();
-            conn = null;
+            // closes the connection and releases resources
+            if (_conn != null) _conn.Close();
+            _conn = null;
          }
          catch { throw; }
       }
 
       public virtual IDbConnection GetCurrentConnection()
       {
-         return this.conn;
+         return _conn;
       }
 
       public virtual DateTime GetCurrentDatetime()
@@ -149,62 +144,74 @@ namespace FreeSQL.Database.OleDb
 
       public void BeginTransaction(bool keepAlive)
       {
-         // abre uma nova conexão se não há nenhuma aberta
-         if (conn == null)
-            OpenConnection();
+         // opens a new connection if there is no open connection
+         if (_conn == null) OpenConnection();
 
-         // quando o estado da conexão não é aberto
-         // fecha a conexão e reabre
-         if (conn.State != ConnectionState.Open)
+         // when the connection state is not opened
+         // close the connection and reopen
+         if (_conn.State != ConnectionState.Open)
          {
             CloseConnection();
             OpenConnection();
          }
 
-         // permite iniciar uma transação somente
-         // quando nehuma outra transação está em uso
-         if (trans == null)
-            trans = conn.BeginTransaction();
+         // allows to start a transaction only
+         // when no other transaction is in use
+         if (_trans == null) _trans = _conn.BeginTransaction();
 
-         // atribui a opção de manter a conexão aberta
+         // assigns the option to keep the connection open
          KeepAlive = keepAlive;
       }
 
       public void CommitTransaction()
       {
-         // há uma conexão válida
-         if (conn != null)
+         CommitTransaction(false);
+      }
+
+      public void CommitTransaction(bool keepAlive)
+      {
+         // assigns the option to keep the connection open
+         KeepAlive = keepAlive;
+
+         // there is a valid connection
+         if (_conn != null)
          {
-            // uma transação está em uso e não é necessário mantê-la ativa
-            if (trans != null && !KeepAlive)
+            // a transaction is in use AND is not necessarary to keep it active
+            if (_trans != null && !KeepAlive)
             {
-               // faz a gravação
-               trans.Commit();
-               // libera os recursos da transação
-               trans = null;
+               // save the changes and releases resources
+               _trans.Commit();
+               _trans = null;
             }
          }
       }
 
       public void RollbackTransaction()
       {
-         // há uma conexão válida
-         if (conn != null)
+         RollbackTransaction(false);
+      }
+
+      public void RollbackTransaction(bool keepAlive)
+      {
+         // assigns the option to keep the connection open
+         KeepAlive = keepAlive;
+
+         // there is a valid connection
+         if (_conn != null)
          {
-            // uma transação está em uso E não é necessário mantê-la ativa
-            if (trans != null && !KeepAlive)
+            // a transaction is in use AND is not necessary to keep it active
+            if (_trans != null && !KeepAlive)
             {
-               // defaz as alterações
-               trans.Rollback();
-               // libera os recursos da transação
-               trans = null;
+               // undo changes and releases resources
+               _trans.Rollback();
+               _trans = null;
             }
          }
       }
 
       public IDbTransaction GetCurrentTransaction()
       {
-         return this.trans;
+         return _trans;
       }
 
       #endregion
@@ -213,58 +220,76 @@ namespace FreeSQL.Database.OleDb
 
       public virtual object[] Insert<T>(T obj)
       {
-         var operation = new InsertOleDbOperation<T>(obj, conn, trans);
+         var operation = new InsertOleDbOperation<T>(obj, _conn, _trans);
          operation.Execute();
          return operation.NewIDs;
       }
 
       public virtual int Insert<T>(T obj, int table)
       {
-         var operation = new InsertOneTableOleDbOperation<T>(obj, table, conn, trans);
+         var operation = new InsertOneTableOleDbOperation<T>(obj, table, _conn, _trans);
          operation.Execute();
          return operation.NewID;
       }
 
       public virtual void Update<T>(T obj)
       {
-         var operation = new UpdateOleDbOperation<T>(obj, conn, trans);
+         var operation = new UpdateOleDbOperation<T>(obj, _conn, _trans);
          operation.Execute();
       }
 
       public virtual void UpdateSpecial<T>(T obj, string column)
       {
-         var operation = new UpdateSpecialOleDbOperation<T>(obj, column, conn, trans);
+         var operation = new UpdateSpecialOleDbOperation<T>(obj, column, _conn, _trans);
          operation.Execute();
       }
 
       public virtual void Delete<T>(T obj)
       {
-         var operation = new DeleteOleDbOperation<T>(obj, conn, trans);
+         var operation = new DeleteOleDbOperation<T>(obj, false, _conn, _trans);
+         operation.Execute();
+      }
+
+      public virtual void Delete<T>(T obj, bool ignoreVirtual)
+      {
+         var operation = new DeleteOleDbOperation<T>(obj, ignoreVirtual, _conn, _trans);
          operation.Execute();
       }
 
       public virtual void DeleteSpecial<T>(string column, object value)
       {
-         var operation = new DeleteSpecialOleDbOperation<T>(column, value, conn, trans);
+         var operation = new DeleteSpecialOleDbOperation<T>(column, value, false, _conn, _trans);
+         operation.Execute();
+      }
+
+      public virtual void DeleteSpecial<T>(string column, object value, bool ignoreVirtual)
+      {
+         var operation = new DeleteSpecialOleDbOperation<T>(column, value, ignoreVirtual, _conn, _trans);
          operation.Execute();
       }
 
       public virtual void DeleteSpecial<T>(string[] columns, object[] values)
       {
-         var operation = new DeleteSpecialOleDbOperation<T>(columns, values, conn, trans);
+         var operation = new DeleteSpecialOleDbOperation<T>(columns, values, false, _conn, _trans);
+         operation.Execute();
+      }
+
+      public virtual void DeleteSpecial<T>(string[] columns, object[] values, bool ignoreVirtual)
+      {
+         var operation = new DeleteSpecialOleDbOperation<T>(columns, values, ignoreVirtual, _conn, _trans);
          operation.Execute();
       }
 
       public virtual T Select<T>(int codObj)
       {
-         var operation = new SelectOleDbOperation<T>(codObj, conn, trans);
+         var operation = new SelectOleDbOperation<T>(codObj, _conn, _trans);
          operation.Execute();
          return operation.ReturnObject;
       }
 
       public virtual T[] SelectAll<T>(string order)
       {
-         var operation = new SelectAllOleDbOperation<T>(order, conn, trans);
+         var operation = new SelectAllOleDbOperation<T>(order, _conn, _trans);
          operation.Execute();
          return operation.ReturnObjects;
       }
@@ -276,7 +301,7 @@ namespace FreeSQL.Database.OleDb
 
       public virtual T[] SelectSpecial<T>(string column, string comparison, object value)
       {
-         var operation = new SelectSpecialOleDbOperation<T>(column, comparison, value, conn, trans);
+         var operation = new SelectSpecialOleDbOperation<T>(column, comparison, value, _conn, _trans);
          operation.Execute();
          return operation.ReturnObjects;
       }
@@ -289,14 +314,14 @@ namespace FreeSQL.Database.OleDb
 
       public virtual T[] SelectSpecial<T>(string[] columns, string[] comparison, object[] values)
       {
-         var operation = new SelectSpecialOleDbOperation<T>(columns, comparison, values, conn, trans);
+         var operation = new SelectSpecialOleDbOperation<T>(columns, comparison, values, _conn, _trans);
          operation.Execute();
          return operation.ReturnObjects;
       }
 
       public virtual T[] SelectTop<T>(int rows, string column, bool desc)
       {
-         var operation = new SelectTopOleDbOperation<T>(rows, column, desc, conn, trans);
+         var operation = new SelectTopOleDbOperation<T>(rows, column, desc, _conn, _trans);
          operation.Execute();
          return operation.ReturnObjects;
       }
@@ -308,14 +333,14 @@ namespace FreeSQL.Database.OleDb
 
       public virtual T[] SelectTop<T>(int rows, string fColumn, string comparison, object value, string sColumn, bool desc)
       {
-         var operation = new SelectTopWhereOleDbOperation<T>(rows, fColumn, comparison, value, sColumn, desc, conn, trans);
+         var operation = new SelectTopWhereOleDbOperation<T>(rows, fColumn, comparison, value, sColumn, desc, _conn, _trans);
          operation.Execute();
          return operation.ReturnObjects;
       }
 
       public virtual T[] SelectTop<T>(int rows, string[] columns, bool[] descs)
       {
-         var operation = new SelectTopOleDbOperation<T>(rows, columns, descs, conn, trans);
+         var operation = new SelectTopOleDbOperation<T>(rows, columns, descs, _conn, _trans);
          operation.Execute();
          return operation.ReturnObjects;
       }
@@ -328,16 +353,23 @@ namespace FreeSQL.Database.OleDb
 
       public virtual T[] SelectTop<T>(int rows, string[] fColumns, string[] comparison, object[] values, string[] sColumns, bool[] desc)
       {
-         var operation = new SelectTopWhereOleDbOperation<T>(rows, fColumns, comparison, values, sColumns, desc, conn, trans);
+         var operation = new SelectTopWhereOleDbOperation<T>(rows, fColumns, comparison, values, sColumns, desc, _conn, _trans);
          operation.Execute();
          return operation.ReturnObjects;
       }
 
-      public virtual DataRow[] CustomSelect(string SqlCommand, SearchParam[] Parameters)
+      public virtual T[] CustomSelect<T>(string commandText, SearchParam[] parameters)
       {
-         var operation = new CustomSelectOleDbOperation(SqlCommand, Parameters, conn, trans);
+         var operation = new CustomSelectOleDbOperation<T>(commandText, parameters, _conn, _trans);
          operation.Execute();
          return operation.ReturnObjects;
+      }
+
+      public virtual T SelectValue<T>(string commandText, SearchParam[] parameters)
+      {
+         var operation = new SelectValueOleDbOperation<T>(commandText, parameters, _conn, _trans);
+         operation.Execute();
+         return operation.ReturnValue;
       }
 
       #endregion

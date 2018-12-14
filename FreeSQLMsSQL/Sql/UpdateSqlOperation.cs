@@ -1,20 +1,19 @@
 ﻿/*
 FreeSQL
-Copyright (C) 2016 Fabiano Couto
+Copyright (C) 2016-2019 Fabiano Couto
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -30,7 +29,7 @@ namespace FreeSQL.Database.MsSQL
 {
    internal class UpdateSqlOperation<T> : SqlOperation
    {
-      // variáveis locais
+      // local variables
       private readonly T obj;
 
       public UpdateSqlOperation(T obj, SqlConnection connection, SqlTransaction transaction)
@@ -43,7 +42,7 @@ namespace FreeSQL.Database.MsSQL
       {
          try
          {
-            // faz a leitura das tabelas com permissão para alteração (crUd - Update)
+            // read tables with permission to update (crUd - Update)
             var tables = GetTableAttributes<T>().Where(a => !a.Relationship && a.CRUD.HasFlag(CrudOptions.Update)).ToArray();
 
             foreach (var t in tables)
@@ -57,58 +56,58 @@ namespace FreeSQL.Database.MsSQL
 
       private SqlCommand GetUpdateCommand(T obj, Table t)
       {
-         // possui permissão para atualização (crUd - UPDATE)?
+         // allowed to update (crUd - UPDATE)?
          if (!t.CRUD.HasFlag(CrudOptions.Update))
             throw new Exception(string.Format("A tabela {0} não possui permissão para atualização de registros.", t.TableName));
 
-         // atributos personalizados
+         // custom attributes
          var prop = GetProperties(obj);
 
-         // obtém a chave primária e os dados do campo
+         // gets the primary key and field data
          var pk = GetPrimaryKeyProperty<T>(t);
          var pf = GetField(pk, t.Index);
 
-         // variaveis locais
+         // local variables
          var fList = new List<string>();
          var vList = new List<string>();
 
-         // cria o command
+         // creates the command
          var cmd = new SqlCommand();
 
-         // faz a leitura das propriedades
+         // read properties
          foreach (PropertyInfo item in prop)
          {
             if (item.GetCustomAttributes(true).ToList().Count > 0)
             {
-               // obtém os atributos associados ao campo
+               // gets the attributes associated with the field
                var f = GetField(item, t.Index);
                var k = GetKeyAttribute(item, t);
 
-               // é o campo chave/identidade?
-               bool keyId = (k != null && k.IsPrimary);
+               // is the key/identity field?
+               bool keyId = (k != null && k.IsIdentity);
 
                if (!keyId && f != null && f.FieldName != "" && f.TableIndex == t.Index)
                {
-                  // obtém o valor da propriedade da entidade
+                  // gets the value of the entity's property
                   var value = item.GetValue(obj, null);
 
-                  // preenche a lista de campos e valores
+                  // fill list of fields and values
                   fList.Add(string.Format("{0} = @{0}", f.FieldName));
 
-                  // inclui o parametro ao comando
+                  // includes the parameter to the command
                   cmd.Parameters.Add(f.FieldName, (SqlDbType)f.DatabaseType).Value = ParseValue(value);
                }
             }
          }
 
-         // inclui a clásula where
+         // includes the where clause
          cmd.Parameters.Add("@id_table", (SqlDbType)pf.DatabaseType).Value = ParseValue(pk.GetValue(obj, null));
 
-         // converte as listas
+         // convert lists
          string fields = string.Join(", ", fList);
          string where = string.Format("{0} = @id_table", pf.FieldName);
 
-         // define o comando e o atribui
+         // sets the command and assign it
          string query = "UPDATE {0} SET {1} WHERE ({2});";
          cmd.CommandText = string.Format(query, t.TableName, fields, where);
 
