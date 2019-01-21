@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.28010.2036
+VisualStudioVersion = 15.0.27130.2024
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FreeSQL", "FreeSQL\FreeSQL.csproj", "{BBA1075F-9C2B-498B-9D56-11D744A03E88}"
 EndProject
@@ -10,6 +10,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FreeSQLOleDb", "FreeSQLOleDb\FreeSQLOleDb.csproj", "{7E506EC5-295C-4856-A975-740D44CE1603}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Teste", "Teste\Teste.csproj", "{2FE7DC9C-5CEC-41C7-8E22-F43C312F44C4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FreeSQLSqlCe", "FreeSQLSqlCe\FreeSQLSqlCe.csproj", "{2ABC2AEB-A6B7-471E-9640-5C403A35CC89}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{2FE7DC9C-5CEC-41C7-8E22-F43C312F44C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2FE7DC9C-5CEC-41C7-8E22-F43C312F44C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2FE7DC9C-5CEC-41C7-8E22-F43C312F44C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2ABC2AEB-A6B7-471E-9640-5C403A35CC89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2ABC2AEB-A6B7-471E-9640-5C403A35CC89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2ABC2AEB-A6B7-471E-9640-5C403A35CC89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2ABC2AEB-A6B7-471E-9640-5C403A35CC89}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
